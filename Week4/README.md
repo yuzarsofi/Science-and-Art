@@ -1,1 +1,1 @@
-Transformers diffusers streamlit torch installe
+Transformers diffusers streamlit torch installed
