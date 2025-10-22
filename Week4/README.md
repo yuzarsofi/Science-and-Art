@@ -1,0 +1,1 @@
+Transformers diffusers streamlit torch installe
