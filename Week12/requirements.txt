@@ -1,0 +1,8 @@
+streamlit
+transformers
+torch
+diffusers
+accelerate
+scipy
+ftfy
+Pillow
