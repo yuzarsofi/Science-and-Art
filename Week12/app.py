@@ -5,36 +5,48 @@ from diffusers import StableDiffusionPipeline
 from PIL import Image, ImageFilter, ImageOps
 
 # --- 1. SETUP PAGE CONFIG ---
-st.set_page_config(page_title="My AI Studio (Week 11)", layout="wide")
+st.set_page_config(page_title="My AI Studio (Final)", layout="wide")
 
 st.sidebar.title("🤖 AI Studio")
 mode = st.sidebar.radio("Choose Mode:", ["💬 Chat Mode", "🎨 Art Mode"])
 st.sidebar.markdown("---")
-st.sidebar.write("Week 11: Now with Filters!")
+st.sidebar.write("Final Project Submission")
 
 # --- 2. LOAD MODELS ---
 @st.cache_resource
 def load_chat_model():
+    # T5 runs okay on CPU
     return pipeline("text2text-generation", model="google/flan-t5-base")
 
 @st.cache_resource
 def load_art_model():
-    # Load Stable Diffusion (GPU optimized)
+    # AUTOMATICALLY DETECT HARDWARE
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    
+    # Select precision (float16 for GPU, float32 for CPU to prevent errors)
+    torch_dtype = torch.float16 if device == "cuda" else torch.float32
+    
+    st.info(f"⏳ Loading Art Model on: {device.upper()}... (This may be slow)")
+    
     pipe = StableDiffusionPipeline.from_pretrained(
         "runwayml/stable-diffusion-v1-5", 
-        torch_dtype=torch.float16
+        torch_dtype=torch_dtype
     )
-    pipe = pipe.to("cuda")
+    pipe = pipe.to(device)
+    
+    # Enable memory saving tricks for CPU
+    if device == "cpu":
+        pipe.enable_attention_slicing() 
+        
     return pipe
 
-# --- 3. FILTER FUNCTION (WEEK 11 TASK) ---
+# --- 3. FILTER FUNCTION ---
 def apply_filter(image, filter_name):
     if filter_name == "Grayscale":
         return ImageOps.grayscale(image)
     elif filter_name == "Blur":
         return image.filter(ImageFilter.GaussianBlur(5))
     elif filter_name == "Edge Detection":
-        # Convert to grayscale first for better edges, then find edges
         return image.convert("L").filter(ImageFilter.FIND_EDGES)
     elif filter_name == "Contour":
         return image.filter(ImageFilter.CONTOUR)
@@ -57,44 +69,31 @@ if mode == "💬 Chat Mode":
                 )
                 st.success(response[0]['generated_text'])
 
-# --- 5. ART MODE (WITH FILTERS) ---
+# --- 5. ART MODE ---
 elif mode == "🎨 Art Mode":
-    st.title("🎨 AI Art Generator + Filters")
+    st.title("🎨 AI Art Generator")
     
-    # Initialize Session State to remember the image
     if "generated_image" not in st.session_state:
         st.session_state.generated_image = None
 
-    prompt = st.text_input("Describe your image:", "A futuristic city in watercolor style")
+    prompt = st.text_input("Describe your image:", "A futuristic city")
     
     if st.button("Generate Art"):
-        with st.spinner("Painting..."):
+        with st.spinner("Painting... (On CPU this might take 5-10 minutes!)"):
             try:
                 art_pipe = load_art_model()
                 image = art_pipe(prompt).images[0]
-                # Save to session state so it doesn't vanish
                 st.session_state.generated_image = image
             except Exception as e:
                 st.error(f"Error: {e}")
 
-    # If an image exists in memory, show filter options
     if st.session_state.generated_image is not None:
         st.markdown("---")
         col1, col2 = st.columns(2)
-        
         with col1:
-            st.subheader("Original")
-            st.image(st.session_state.generated_image, use_container_width=True)
-            
+            st.image(st.session_state.generated_image, caption="Original", use_container_width=True)
         with col2:
-            st.subheader("Apply Filter (Week 11)")
-            filter_choice = st.selectbox(
-                "Choose a style:", 
-                ["None", "Grayscale", "Blur", "Edge Detection", "Contour"]
-            )
-            
+            filter_choice = st.selectbox("Apply Filter:", ["None", "Grayscale", "Blur", "Edge Detection"])
             if filter_choice != "None":
                 filtered_image = apply_filter(st.session_state.generated_image, filter_choice)
                 st.image(filtered_image, caption=f"Filter: {filter_choice}", use_container_width=True)
-            else:
-                st.info("Select a filter to see the magic!")
