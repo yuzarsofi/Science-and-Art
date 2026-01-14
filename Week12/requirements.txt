@@ -1,8 +1,9 @@
 streamlit
 transformers
 torch
+requests
+Pillow
 diffusers
 accelerate
-scipy
-ftfy
-Pillow
+sentencepiece
+protobuf
